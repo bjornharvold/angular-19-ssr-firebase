@@ -5,6 +5,7 @@ import {
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
 import express from 'express';
+import axios from 'axios';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,17 +15,22 @@ const browserDistFolder = resolve(serverDistFolder, '../browser');
 const app = express();
 const angularApp = new AngularNodeAppEngine();
 
-/**
- * Example Express Rest API endpoints can be defined here.
- * Uncomment and define endpoints as necessary.
- *
- * Example:
- * ```ts
- * app.get('/api/**', (req, res) => {
- *   // Handle API request
- * });
- * ```
- */
+// Function to fetch Open Graph data from an API
+async function fetchMetaTags(urlName: string) {
+  try {
+    console.log('retrieve OG data');
+    const response = await axios.get(`https://your-api.com/users/${urlName}/og-data`);
+    return response.data; // Assuming API returns { title, description, image, url }
+  } catch (error) {
+    console.error('Error fetching Open Graph data:', error);
+    return {
+      title: 'Default Title',
+      description: 'Default Description',
+      image: 'https://yourdomain.com/default-image.jpg',
+      url: `https://yourdomain.com`
+    };
+  }
+}
 
 /**
  * Serve static files from /browser
@@ -40,9 +46,34 @@ app.use(
 /**
  * Handle all other requests by rendering the Angular application.
  */
-app.use('/**', (req, res, next) => {
+app.use('/**', async(req, res, next) => {
+  console.log('req', req);
+  const originalUrl = req.originalUrl;
+  console.log('originalUrl', req.originalUrl);
+
+  let urlName = null;
+
+  // Extract user ID if URL contains it (e.g., /profile/123)
+  if (originalUrl.length > 1) {
+    console.log('originalUrl', req.originalUrl.split('/'));
+    urlName = originalUrl.split('/')[1];
+  }
+
+  let metaTags: any;
+  if (urlName != null) {
+    console.log('urlName', urlName);
+
+    metaTags = await fetchMetaTags(urlName);
+  } else {
+    metaTags = {
+      image: 'unknown'
+    };
+  }
+  
+  console.log(metaTags);
+
   angularApp
-    .handle(req)
+    .handle(req, { metaTags : metaTags })
     .then((response) =>
       response ? writeResponseToNodeResponse(response, res) : next()
     )
