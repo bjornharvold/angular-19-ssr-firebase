@@ -13,6 +13,6 @@ import {onRequest} from "firebase-functions/v2/https";
 // https://firebase.google.com/docs/functions/typescript
 
 // TODO below this is incorrect
-import { app } from './server';
+// import { app } from './server';
 
-export const ssr = onRequest(app());
+// export const ssr = onRequest(app());
